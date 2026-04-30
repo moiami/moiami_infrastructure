@@ -25,17 +25,29 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - static_files:/srv/staticfiles
+  sso:
+    image: leoagf/sso:1.2
+    restart: unless-stopped
+    ports:
+      - "3533:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@db:5432/postgres'
+      SECRET_KEY: 'M&6u_hdJ-)Qvx:yGkN+2|1a917e3c181d9399a72327e00f78ff8a9992aeea|3ae318fbdc247ce171ea90c244cc46e4'
   db:
     image: postgres:latest
     restart: unless-stopped
     ports:
       - "1234:5432"
     environment:
+      DB_URL: postgres
       POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data2:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
@@ -54,6 +66,6 @@ services:
 
 volumes:
   static_files:
-  postgres_data:
+  postgres_data2:
   minio_data:
 

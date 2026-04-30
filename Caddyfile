@@ -4,5 +4,20 @@
         file_server
     }
 
-    reverse_proxy resource:8000
+    handle_path /sso/* {
+        root * /sso
+        reverse_proxy sso:8001
+    }
+
+    handle_path /resource/* {
+        forward_auth /* sso:8001 {
+            method POST
+            uri /api/v1/auth/validate
+            copy_headers X-User-Id
+        }
+
+        root * /resource
+
+        reverse_proxy resource:8000
+    }
 }

@@ -1,6 +1,0 @@
-[submodule "moiami_resource_service"]
-	path = moiami_resource_service
-	url = git@github.com:moiami/moiami_resource_service.git
-[submodule "moiami_sso"]
-	path = moiami_sso
-	url = git@github.com:moiami/moiami_sso.git
