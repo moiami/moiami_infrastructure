@@ -1,10 +1,10 @@
 name: moiami
 services:
   resource:
-    image: trard/moiami_resource_service:1.0
+    image: trard/moiami_resource_service:1.11
     restart: unless-stopped
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       SECRET_KEY: 'django-insecure-o&+f#_3gh5d^t=00y37i$$l!)&g44@)_g$$e0#=ourvm2g_l3w)2'
       DEBUG: true
@@ -26,7 +26,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - static_files:/srv/staticfiles
   sso:
-    image: leoagf/sso:1.2
+    image: leoagf/sso:1.4
     restart: unless-stopped
     ports:
       - "3533:8001"
