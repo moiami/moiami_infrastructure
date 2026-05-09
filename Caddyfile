@@ -16,9 +16,17 @@
             copy_headers X-User-Id
             copy_headers X-User-Role
         }
-
         root * /resource
-
         reverse_proxy resource:8000
+    }
+
+    handle /api/v1/comments* {
+        forward_auth /* sso:8001 {
+            method POST
+            uri /api/v1/auth/validate
+            copy_headers X-User-Id
+            copy_headers X-User-Role
+        }
+        reverse_proxy comments-service:8007
     }
 }
