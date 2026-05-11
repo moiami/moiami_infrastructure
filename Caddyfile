@@ -9,6 +9,32 @@
         reverse_proxy sso:8001
     }
 
+    @public_resource_routes `
+        path('/resource/api/v1/catalog/movies/') ||
+        path_regexp('^/resource/api/v1/catalog/movies/[^/]+/$') ||
+        path_regexp('^/resource/api/v1/catalog/movies/[^/]+/genres/$') ||
+        path_regexp('^/resource/api/v1/catalog/movies/subscriptions/[^/]+/$') ||
+        path('/resource/api/v1/catalog/genres/') ||
+        path_regexp('^/resource/api/v1/catalog/genres/[^/]+/$') ||
+        path_regexp('^/resource/api/v1/catalog/images/[^/]+/$') ||
+        path_regexp('^/resource/api/v1/catalog/videos/[^/]+/$') ||
+        path('/resource/api/v1/subscriptions/') ||
+        path_regexp('^/resource/api/v1/subscriptions/[^/]+/$') ||
+        path('/resource/api/v1/user-subscriptions/add/') ||
+        path_regexp('^/resource/api/v1/user-subscriptions/check/[^/]+/$') ||
+        path_regexp('^/resource/api/v1/users/[^/]+/$') ||
+        path_regexp('^/resource/api/v1/users/[^/]+/subscriptions/$') ||
+        path_regexp('^/resource/api/v1/users/[^/]+/watchlists/$') ||
+        path('/resource/api/v1/watchlists') ||
+        path_regexp('^/resource/api/v1/watchlists/[^/]+$') ||
+        path_regexp('^/resource/api/v1/watchlists/[^/]+/movies$')
+    `
+    handle @public_resource_routes {
+        uri strip_prefix /resource
+        root * /resource
+        reverse_proxy resource:8000
+    }
+
     handle_path /resource/* {
         forward_auth /* sso:8001 {
             method POST
