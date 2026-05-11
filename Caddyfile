@@ -46,6 +46,18 @@
         reverse_proxy resource:8000
     }
 
+    @public_comment_routes `
+        path('/comments/api/v1/comments') ||
+        path('/comments/api/v1/comments/') ||
+        path_regexp('^/comments/api/v1/comments/[^/]+/?$') ||
+        path_regexp('^/comments/api/v1/comments/[^/]+/likes/?$') ||
+        path_regexp('^/comments/api/v1/comments/[^/]+/likes/count/?$')
+    `
+    handle @public_comment_routes {
+        uri strip_prefix /comments
+        reverse_proxy comments-service:8007
+    }
+
     handle_path /comments/* {
         forward_auth /* sso:8001 {
             method POST
@@ -54,6 +66,14 @@
             copy_headers X-User-Role
         }
         reverse_proxy comments-service:8007
+    }
+
+    @public_check_routes {
+        path /check/api/v1/news /check/api/v1/news/
+    }
+    handle @public_check_routes {
+        uri strip_prefix /check
+        reverse_proxy check:8002
     }
 
     handle_path /check/* {
