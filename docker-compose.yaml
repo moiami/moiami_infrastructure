@@ -59,7 +59,10 @@ services:
       - static_files:/srv/staticfiles
 
   sso:
-    image: leoagf/sso:1.4
+    build:
+      context: ../moiami_sso
+      dockerfile: Dockerfile
+    image: trard/moiami_sso:get-post-validate
     restart: unless-stopped
     depends_on:
       db:

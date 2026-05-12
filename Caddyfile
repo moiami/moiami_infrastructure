@@ -4,9 +4,31 @@
         file_server
     }
 
+    handle /openapi.json {
+        reverse_proxy sso:8001
+    }
+
+    handle /docs/oauth2-redirect {
+        reverse_proxy sso:8001
+    }
+
     handle_path /sso/* {
         root * /sso
         reverse_proxy sso:8001
+    }
+
+    @protected_resource_routes {
+        path /resource/api/v1/catalog/movies/top /resource/api/v1/catalog/movies/top/
+    }
+    handle @protected_resource_routes {
+        forward_auth /* sso:8001 {
+            uri /api/v1/auth/validate
+            copy_headers X-User-Id
+            copy_headers X-User-Role
+        }
+        uri strip_prefix /resource
+        root * /resource
+        reverse_proxy resource:8000
     }
 
     @public_resource_routes `
@@ -37,7 +59,6 @@
 
     handle_path /resource/* {
         forward_auth /* sso:8001 {
-            method POST
             uri /api/v1/auth/validate
             copy_headers X-User-Id
             copy_headers X-User-Role
@@ -60,7 +81,6 @@
 
     handle_path /comments/* {
         forward_auth /* sso:8001 {
-            method POST
             uri /api/v1/auth/validate
             copy_headers X-User-Id
             copy_headers X-User-Role
@@ -78,7 +98,6 @@
 
     handle_path /check/* {
         forward_auth /* sso:8001 {
-            method POST
             uri /api/v1/auth/validate
             copy_headers X-User-Id
             copy_headers X-User-Role
