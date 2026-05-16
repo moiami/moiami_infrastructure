@@ -45,7 +45,10 @@ services:
       - static_files:/app/staticfiles
 
   caddy:
-    image: caddy:2
+    build:
+      context: .
+      dockerfile: caddy-security.Dockerfile
+    image: trard/moiami_caddy_security:latest
     restart: unless-stopped
     depends_on:
       - resource
@@ -56,6 +59,7 @@ services:
       - "80:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../moiami_sso/keys:/etc/caddy/sso:ro
       - static_files:/srv/staticfiles
 
   sso:
@@ -70,6 +74,12 @@ services:
     environment:
       DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@db:5432/sso'
       SECRET_KEY: 'M&6u_hdJ-)Qvx:yGkN+2|1a917e3c181d9399a72327e00f78ff8a9992aeea|3ae318fbdc247ce171ea90c244cc46e4'
+      CLIENT_ID: 'caddy-portal'
+      ISSUER_URL: 'http://localhost:8001'
+      PRIVATE_KEY_PATH: '/app/keys/private.pem'
+      PUBLIC_KEY_PATH: '/app/keys/public.pem'
+    volumes:
+      - ../moiami_sso/keys:/app/keys:ro
 
   db:
     image: postgres:16-alpine
