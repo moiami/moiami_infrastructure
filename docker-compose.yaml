@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       DEBUG: "false"
-      RESOURCE_SERVICE_URL: "resource:8000"
+      RESOURCE_SERVICE_URL: "http://resource:8000"
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/comments"
       SQLALCHEMY_DATABASE_URI: "postgresql://postgres:postgres@db:5432/comments"
       SQLALCHEMY_TRACK_MODIFICATIONS: "false"
@@ -35,6 +35,7 @@ services:
     environment:
       SECRET_KEY: 'django-insecure-o&+f#_3gh5d^t=00y37i$$l!)&g44@)_g$$e0#=ourvm2g_l3w)2'
       DEBUG: true
+      ALLOWED_HOSTS: "localhost,127.0.0.1,resource"
       DB_NAME: resource
       DB_HOST: db
       DB_PORT: 5432
