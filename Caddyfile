@@ -43,6 +43,17 @@
 		reverse_proxy resource:8000
 	}
 
+	@movie_detail_with_token {
+		path_regexp ^/resource/api/v1/catalog/movies/[^/]+/$
+		header Authorization "Bearer *"
+	}
+	handle @movie_detail_with_token {
+		authorize with moiami_jwt
+		uri strip_prefix /resource
+		root * /resource
+		reverse_proxy resource:8000
+	}
+
 	@public_resource_routes `
         path('/resource/api/v1/catalog/movies/') ||
         path_regexp('^/resource/api/v1/catalog/movies/[^/]+/$') ||
