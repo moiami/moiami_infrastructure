@@ -30,38 +30,66 @@
 	authorize with moiami_registered_user
 	uri strip_prefix /resource
 	root * /resource
-	reverse_proxy resource:8000
+	reverse_proxy resource:8000 {
+		header_down Location "^/(.*)" "/resource/$1"
+	}
 }
 
 (resource_admin_proxy) {
 	authorize with moiami_admin
 	uri strip_prefix /resource
 	root * /resource
+	reverse_proxy resource:8000 {
+		header_down Location "^/(.*)" "/resource/$1"
+	}
+}
+
+(resource_admin_direct_proxy) {
+	authorize with moiami_admin
 	reverse_proxy resource:8000
 }
 
 (comments_registered_proxy) {
 	authorize with moiami_registered_user
 	uri strip_prefix /comments
-	reverse_proxy comments-service:8007
+	reverse_proxy comments-service:8007 {
+		header_down Location "^/(.*)" "/comments/$1"
+	}
 }
 
 (comments_admin_proxy) {
 	authorize with moiami_admin
 	uri strip_prefix /comments
-	reverse_proxy comments-service:8007
+	reverse_proxy comments-service:8007 {
+		header_down Location "^/(.*)" "/comments/$1"
+	}
 }
 
 (check_registered_proxy) {
 	authorize with moiami_registered_user
 	uri strip_prefix /check
-	reverse_proxy check:8002
+	reverse_proxy check:8002 {
+		header_down Location "^/(.*)" "/check/$1"
+	}
 }
 
 (check_admin_proxy) {
 	authorize with moiami_admin
 	uri strip_prefix /check
-	reverse_proxy check:8002
+	reverse_proxy check:8002 {
+		header_down Location "^/(.*)" "/check/$1"
+	}
+}
+
+http://resource.{$CADDY_BASE_DOMAIN:localhost} {
+	handle_path /static/* {
+		root * /srv/staticfiles
+		file_server
+	}
+
+	handle {
+		import resource_admin_direct_proxy
+	}
 }
 
 :80 {

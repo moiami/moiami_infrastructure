@@ -35,7 +35,7 @@ services:
     environment:
       SECRET_KEY: 'django-insecure-o&+f#_3gh5d^t=00y37i$$l!)&g44@)_g$$e0#=ourvm2g_l3w)2'
       DEBUG: true
-      ALLOWED_HOSTS: "localhost,127.0.0.1,resource"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,resource,resource.${CADDY_BASE_DOMAIN:-localhost}"
       DB_NAME: resource
       DB_HOST: db
       DB_PORT: 5432
@@ -58,6 +58,8 @@ services:
       - sso
     ports:
       - "80:80"
+    environment:
+      CADDY_BASE_DOMAIN: "${CADDY_BASE_DOMAIN:-localhost}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ../moiami_sso/keys:/etc/caddy/sso:ro
