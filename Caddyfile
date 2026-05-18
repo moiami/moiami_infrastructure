@@ -1,6 +1,6 @@
 {
 	security {
-		authorization policy moiami_jwt {
+		authorization policy moiami_registered_user {
 			disable auth redirect
 			crypto key sso-key-1 verify from file /etc/caddy/sso/public.pem
 			validate bearer header
@@ -11,7 +11,57 @@
 				allow stop
 			}
 		}
+
+		authorization policy moiami_admin {
+			disable auth redirect
+			crypto key sso-key-1 verify from file /etc/caddy/sso/public.pem
+			validate bearer header
+			inject header X-User-Id from id
+			inject header X-User-Role from roles
+			acl rule {
+				match roles admin
+				allow stop
+			}
+		}
 	}
+}
+
+(resource_registered_proxy) {
+	authorize with moiami_registered_user
+	uri strip_prefix /resource
+	root * /resource
+	reverse_proxy resource:8000
+}
+
+(resource_admin_proxy) {
+	authorize with moiami_admin
+	uri strip_prefix /resource
+	root * /resource
+	reverse_proxy resource:8000
+}
+
+(comments_registered_proxy) {
+	authorize with moiami_registered_user
+	uri strip_prefix /comments
+	reverse_proxy comments-service:8007
+}
+
+(comments_admin_proxy) {
+	authorize with moiami_admin
+	uri strip_prefix /comments
+	reverse_proxy comments-service:8007
+}
+
+(check_registered_proxy) {
+	authorize with moiami_registered_user
+	uri strip_prefix /check
+	reverse_proxy check:8002
+}
+
+(check_admin_proxy) {
+	authorize with moiami_admin
+	uri strip_prefix /check
+	reverse_proxy check:8002
 }
 
 :80 {
@@ -33,82 +83,84 @@
 		reverse_proxy sso:8001
 	}
 
-	@protected_resource_routes {
-		path /resource/api/v1/catalog/movies/top /resource/api/v1/catalog/movies/top/
-	}
-	handle @protected_resource_routes {
-		authorize with moiami_jwt
-		uri strip_prefix /resource
-		root * /resource
-		reverse_proxy resource:8000
-	}
-
-	@movie_detail_with_token {
-		path_regexp ^/resource/api/v1/catalog/movies/[^/]+/$
-		header Authorization "Bearer *"
-	}
-	handle @movie_detail_with_token {
-		authorize with moiami_jwt
-		uri strip_prefix /resource
-		root * /resource
-		reverse_proxy resource:8000
-	}
-
-	@public_resource_routes `
-        path('/resource/api/v1/catalog/movies/') ||
-        path_regexp('^/resource/api/v1/catalog/movies/[^/]+/$') ||
-        path_regexp('^/resource/api/v1/catalog/movies/[^/]+/genres/$') ||
-        path_regexp('^/resource/api/v1/catalog/movies/subscriptions/[^/]+/$') ||
-        path('/resource/api/v1/catalog/genres/') ||
-        path_regexp('^/resource/api/v1/catalog/genres/[^/]+/$') ||
-        path_regexp('^/resource/api/v1/catalog/images/[^/]+/$') ||
-        path_regexp('^/resource/api/v1/catalog/videos/[^/]+/$') ||
-        path('/resource/api/v1/subscriptions/') ||
-        path_regexp('^/resource/api/v1/subscriptions/[^/]+/$') ||
-        path_regexp('^/resource/api/v1/users/[^/]+/$') ||
-        path_regexp('^/resource/api/v1/users/[^/]+/subscriptions/$') ||
-        path_regexp('^/resource/api/v1/users/[^/]+/watchlists/$')
-    `
-	handle @public_resource_routes {
-		uri strip_prefix /resource
-		root * /resource
-		reverse_proxy resource:8000
+	@registered_resource_routes `
+		(
+			method('GET') && (
+				path('/resource/api/v1/catalog/movies', '/resource/api/v1/catalog/movies/') ||
+				path_regexp('^/resource/api/v1/catalog/movies/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/resource/api/v1/catalog/movies/[0-9a-fA-F-]{36}/genres/?$') ||
+				path_regexp('^/resource/api/v1/catalog/movies/subscriptions/[0-9]+/?$') ||
+				path('/resource/api/v1/catalog/genres', '/resource/api/v1/catalog/genres/') ||
+				path_regexp('^/resource/api/v1/catalog/genres/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/resource/api/v1/catalog/images/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/resource/api/v1/catalog/videos/[0-9a-fA-F-]{36}/?$') ||
+				path('/resource/api/v1/subscriptions', '/resource/api/v1/subscriptions/') ||
+				path_regexp('^/resource/api/v1/subscriptions/[0-9]+/?$') ||
+				path_regexp('^/resource/api/v1/user-subscriptions/check/[^/]+/?$') ||
+				path_regexp('^/resource/api/v1/users/[^/]+/?$') ||
+				path_regexp('^/resource/api/v1/users/[^/]+/subscriptions/?$') ||
+				path_regexp('^/resource/api/v1/users/[^/]+/watchlists/?$') ||
+				path_regexp('^/resource/api/v1/watchlists/[^/]+/?$')
+			)
+		) || (
+			method('POST') && (
+				path('/resource/api/v1/user-subscriptions/add', '/resource/api/v1/user-subscriptions/add/') ||
+				path('/resource/api/v1/watchlists') ||
+				path_regexp('^/resource/api/v1/watchlists/[^/]+/movies/?$')
+			)
+		) || (
+			method('PUT', 'PATCH', 'DELETE') &&
+			path_regexp('^/resource/api/v1/watchlists/[^/]+/?$')
+		)
+	`
+	handle @registered_resource_routes {
+		import resource_registered_proxy
 	}
 
-	handle_path /resource/* {
-		authorize with moiami_jwt
-		root * /resource
-		reverse_proxy resource:8000
+	handle /resource/* {
+		import resource_admin_proxy
 	}
 
-	@public_comment_routes `
-        path('/comments/api/v1/comments') ||
-        path('/comments/api/v1/comments/') ||
-        path_regexp('^/comments/api/v1/comments/[^/]+/?$') ||
-        path_regexp('^/comments/api/v1/comments/[^/]+/likes/?$') ||
-        path_regexp('^/comments/api/v1/comments/[^/]+/likes/count/?$')
-    `
-	handle @public_comment_routes {
-		uri strip_prefix /comments
-		reverse_proxy comments-service:8007
+	@registered_comment_routes `
+		(
+			method('POST') &&
+			(
+				path('/comments/api/v1/comments', '/comments/api/v1/comments/') ||
+				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
+			)
+		) || (
+			method('GET') &&
+			(
+				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$') ||
+				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/count/?$')
+			)
+		) || (
+			method('PUT', 'DELETE') &&
+			path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$')
+		) || (
+			method('DELETE') &&
+			path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
+		)
+	`
+	handle @registered_comment_routes {
+		import comments_registered_proxy
 	}
 
-	handle_path /comments/* {
-		authorize with moiami_jwt
-		reverse_proxy comments-service:8007
+	handle /comments/* {
+		import comments_admin_proxy
 	}
 
-	@public_check_routes {
-		method GET
-		path /check/api/v1/news /check/api/v1/news/
-	}
-	handle @public_check_routes {
-		uri strip_prefix /check
-		reverse_proxy check:8002
+	@registered_check_routes `
+		method('GET') &&
+		path('/check/api/v1/news', '/check/api/v1/news/')
+	`
+	handle @registered_check_routes {
+		import check_registered_proxy
 	}
 
-	handle_path /check/* {
-		authorize with moiami_jwt
-		reverse_proxy check:8002
+	handle /check/* {
+		import check_admin_proxy
 	}
 }
