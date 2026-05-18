@@ -28,57 +28,32 @@
 
 (resource_registered_proxy) {
 	authorize with moiami_registered_user
-	uri strip_prefix /resource
-	root * /resource
-	reverse_proxy resource:8000 {
-		header_down Location "^/(.*)" "/resource/$1"
-	}
+	reverse_proxy resource:8000
 }
 
 (resource_admin_proxy) {
-	authorize with moiami_admin
-	uri strip_prefix /resource
-	root * /resource
-	reverse_proxy resource:8000 {
-		header_down Location "^/(.*)" "/resource/$1"
-	}
-}
-
-(resource_admin_direct_proxy) {
 	authorize with moiami_admin
 	reverse_proxy resource:8000
 }
 
 (comments_registered_proxy) {
 	authorize with moiami_registered_user
-	uri strip_prefix /comments
-	reverse_proxy comments-service:8007 {
-		header_down Location "^/(.*)" "/comments/$1"
-	}
+	reverse_proxy comments-service:8007
 }
 
 (comments_admin_proxy) {
 	authorize with moiami_admin
-	uri strip_prefix /comments
-	reverse_proxy comments-service:8007 {
-		header_down Location "^/(.*)" "/comments/$1"
-	}
+	reverse_proxy comments-service:8007
 }
 
 (check_registered_proxy) {
 	authorize with moiami_registered_user
-	uri strip_prefix /check
-	reverse_proxy check:8002 {
-		header_down Location "^/(.*)" "/check/$1"
-	}
+	reverse_proxy check:8002
 }
 
 (check_admin_proxy) {
 	authorize with moiami_admin
-	uri strip_prefix /check
-	reverse_proxy check:8002 {
-		header_down Location "^/(.*)" "/check/$1"
-	}
+	reverse_proxy check:8002
 }
 
 http://resource.{$CADDY_BASE_DOMAIN:localhost} {
@@ -87,108 +62,92 @@ http://resource.{$CADDY_BASE_DOMAIN:localhost} {
 		file_server
 	}
 
-	handle {
-		import resource_admin_direct_proxy
-	}
-}
-
-:80 {
-	handle_path /static/* {
-		root * /srv/staticfiles
-		file_server
-	}
-
-	handle /openapi.json {
-		reverse_proxy sso:8001
-	}
-
-	handle /docs/oauth2-redirect {
-		reverse_proxy sso:8001
-	}
-
-	handle_path /sso/* {
-		root * /sso
-		reverse_proxy sso:8001
-	}
-
 	@registered_resource_routes `
 		(
 			method('GET') && (
-				path('/resource/api/v1/catalog/movies', '/resource/api/v1/catalog/movies/') ||
-				path_regexp('^/resource/api/v1/catalog/movies/[0-9a-fA-F-]{36}/?$') ||
-				path_regexp('^/resource/api/v1/catalog/movies/[0-9a-fA-F-]{36}/genres/?$') ||
-				path_regexp('^/resource/api/v1/catalog/movies/subscriptions/[0-9]+/?$') ||
-				path('/resource/api/v1/catalog/genres', '/resource/api/v1/catalog/genres/') ||
-				path_regexp('^/resource/api/v1/catalog/genres/[0-9a-fA-F-]{36}/?$') ||
-				path_regexp('^/resource/api/v1/catalog/images/[0-9a-fA-F-]{36}/?$') ||
-				path_regexp('^/resource/api/v1/catalog/videos/[0-9a-fA-F-]{36}/?$') ||
-				path('/resource/api/v1/subscriptions', '/resource/api/v1/subscriptions/') ||
-				path_regexp('^/resource/api/v1/subscriptions/[0-9]+/?$') ||
-				path_regexp('^/resource/api/v1/user-subscriptions/check/[^/]+/?$') ||
-				path_regexp('^/resource/api/v1/users/[^/]+/?$') ||
-				path_regexp('^/resource/api/v1/users/[^/]+/subscriptions/?$') ||
-				path_regexp('^/resource/api/v1/users/[^/]+/watchlists/?$') ||
-				path_regexp('^/resource/api/v1/watchlists/[^/]+/?$')
+				path('/api/v1/catalog/movies', '/api/v1/catalog/movies/') ||
+				path_regexp('^/api/v1/catalog/movies/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/api/v1/catalog/movies/[0-9a-fA-F-]{36}/genres/?$') ||
+				path_regexp('^/api/v1/catalog/movies/subscriptions/[0-9]+/?$') ||
+				path('/api/v1/catalog/genres', '/api/v1/catalog/genres/') ||
+				path_regexp('^/api/v1/catalog/genres/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/api/v1/catalog/images/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/api/v1/catalog/videos/[0-9a-fA-F-]{36}/?$') ||
+				path('/api/v1/subscriptions', '/api/v1/subscriptions/') ||
+				path_regexp('^/api/v1/subscriptions/[0-9]+/?$') ||
+				path_regexp('^/api/v1/user-subscriptions/check/[^/]+/?$') ||
+				path_regexp('^/api/v1/users/[^/]+/?$') ||
+				path_regexp('^/api/v1/users/[^/]+/subscriptions/?$') ||
+				path_regexp('^/api/v1/users/[^/]+/watchlists/?$') ||
+				path_regexp('^/api/v1/watchlists/[^/]+/?$')
 			)
 		) || (
 			method('POST') && (
-				path('/resource/api/v1/user-subscriptions/add', '/resource/api/v1/user-subscriptions/add/') ||
-				path('/resource/api/v1/watchlists') ||
-				path_regexp('^/resource/api/v1/watchlists/[^/]+/movies/?$')
+				path('/api/v1/user-subscriptions/add', '/api/v1/user-subscriptions/add/') ||
+				path('/api/v1/watchlists') ||
+				path_regexp('^/api/v1/watchlists/[^/]+/movies/?$')
 			)
 		) || (
 			method('PUT', 'PATCH', 'DELETE') &&
-			path_regexp('^/resource/api/v1/watchlists/[^/]+/?$')
+			path_regexp('^/api/v1/watchlists/[^/]+/?$')
 		)
 	`
 	handle @registered_resource_routes {
 		import resource_registered_proxy
 	}
 
-	handle /resource/* {
+	handle {
 		import resource_admin_proxy
 	}
+}
 
+http://comments.{$CADDY_BASE_DOMAIN:localhost} {
 	@registered_comment_routes `
 		(
 			method('POST') &&
 			(
-				path('/comments/api/v1/comments', '/comments/api/v1/comments/') ||
-				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
-				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
+				path('/api/v1/comments', '/api/v1/comments/') ||
+				path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
 			)
 		) || (
 			method('GET') &&
 			(
-				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
-				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$') ||
-				path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/count/?$')
+				path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/?$') ||
+				path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$') ||
+				path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/likes/count/?$')
 			)
 		) || (
 			method('PUT', 'DELETE') &&
-			path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/?$')
+			path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/?$')
 		) || (
 			method('DELETE') &&
-			path_regexp('^/comments/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
+			path_regexp('^/api/v1/comments/[0-9a-fA-F-]{36}/likes/?$')
 		)
 	`
 	handle @registered_comment_routes {
 		import comments_registered_proxy
 	}
 
-	handle /comments/* {
+	handle {
 		import comments_admin_proxy
 	}
+}
 
+http://check.{$CADDY_BASE_DOMAIN:localhost} {
 	@registered_check_routes `
 		method('GET') &&
-		path('/check/api/v1/news', '/check/api/v1/news/')
+		path('/api/v1/news', '/api/v1/news/')
 	`
 	handle @registered_check_routes {
 		import check_registered_proxy
 	}
 
-	handle /check/* {
+	handle {
 		import check_admin_proxy
 	}
+}
+
+http://sso.{$CADDY_BASE_DOMAIN:localhost} {
+	reverse_proxy sso:8001
 }
